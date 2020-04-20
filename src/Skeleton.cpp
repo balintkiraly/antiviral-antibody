@@ -72,6 +72,19 @@ public:
     }
 };
 //---------------------------
+class AntibodyTexture : public Texture {
+//---------------------------
+public:
+    AntibodyTexture(const int width = 600, const int height = 600) : Texture() {
+        std::vector<vec4> image(width * height);
+        const vec4 lightGreen(0.8f, 1, 0.8f, 1);
+        for (int x = 0; x < width; x++) for (int y = 0; y < height; y++) {
+            image[y * width + x] = lightGreen;
+        }
+        create(width, height, image, GL_NEAREST);
+    }
+};
+//---------------------------
 class StrippedTexture : public Texture {
 //---------------------------
 public:
@@ -455,7 +468,25 @@ public:
         vd.texcoord = vec2(u, v);
         return vd;
     }
-    float Animate(float tstart, float tend) { return 0.8f * tend; }
+    float Animate(float tstart, float tend) { return 1.8f * tend; }
+};
+
+
+//---------------------------
+class Antibody : public ParamSurface {
+//---------------------------
+public:
+    Antibody() { create(); }
+
+    VertexData GenVertexData(float u, float v) {
+        VertexData vd;
+        vd.position = vd.normal = vec3(cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                                       sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                                       cosf(v * (float)M_PI));
+        vd.texcoord = vec2(u, v);
+        return vd;
+    }
+    float Animate(float tstart, float tend) { return 0.2f * tend; }
 };
 
 //---------------------------
@@ -566,13 +597,22 @@ public:
         roomMaterial->ka = vec3(0.2f, 0.2f, 0.2f);
         roomMaterial->shininess = 30;
 
+
+        Material * antibodyMaterial = new Material;
+        antibodyMaterial->kd = vec3(0.8f, 0.6f, 0.4f);
+        antibodyMaterial->ks = vec3(0.3f, 0.3f, 0.3f);
+        antibodyMaterial->ka = vec3(0.2f, 0.2f, 0.2f);
+        antibodyMaterial->shininess = 30;
+
         // Textures
         Texture * roomTexture = new RoomTexture();
         Texture * strippedTexture = new StrippedTexture(30, 50);
+        Texture * antibodyTexture = new AntibodyTexture();
 
         // Geometries
         Geometry * room = new Room();
         Geometry * virus = new Virus();
+        Geometry * antibody = new Antibody();
 
         // Create objects by setting up their vertex data on the GPU
         Object * virusObject = new Object(phongShader, virusMaterial, strippedTexture, virus);
@@ -580,6 +620,12 @@ public:
         virusObject->rotationAxis = vec3(0, 1, 1);
         virusObject->scale = vec3(1.0f, 1.0f, 1.0f);
         objects.push_back(virusObject);
+
+        Object * antibodyObject = new Object(phongShader, antibodyMaterial, antibodyTexture, antibody);
+        antibodyObject->translation = vec3(1, 1, 1);
+        antibodyObject->rotationAxis = vec3(0, 1, 1);
+        antibodyObject->scale = vec3(0.5f, 0.2f, 0.5f);
+        objects.push_back(antibodyObject);
 
         Object * roomObject = new Object(phongShader, roomMaterial, roomTexture, room);
         roomObject->translation = vec3(0, 0, 0);
