@@ -536,9 +536,10 @@ public:
 
     VertexData GenVertexData(float u, float v) {
         VertexData vd;
-        vd.position = vd.normal = -1.0f * vec3(cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
-                                       sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
-                                       cosf(v * (float)M_PI));
+        vd.position = vec3(cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                            sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                            cosf(v * (float)M_PI));
+        vd.normal = vec3(0,0,0) - vd.position;
         vd.texcoord = vec2(u, v);
         return vd;
     }
@@ -634,7 +635,7 @@ public:
         objects.push_back(virusObject);
 
         Object * tractricoidObject = new Object(phongShader, virusMaterial, virusSpikeTexture, tractricoid);
-        tractricoidObject->translation = vec3(-2, -2, 1);
+        tractricoidObject->translation = vec3(-1, -1, 1);
         tractricoidObject->rotationAxis = vec3(0, 1, 1);
         tractricoidObject->scale = vec3(0.5f, 0.5f, 0.5f);
         objects.push_back(tractricoidObject);
@@ -648,17 +649,17 @@ public:
         Object * roomObject = new Object(phongShader, roomMaterial, roomTexture, room);
         roomObject->translation = vec3(0, 0, 0);
         roomObject->rotationAxis = vec3(0, 1, 1);
-        roomObject->scale = vec3(10.5f, 10.2f, 10.5f);
+        roomObject->scale = vec3(3.5f, 3.5f, 3.5f);
         objects.push_back(roomObject);
 
         // Camera
-        camera.wEye = vec3(0, 0, 6);
+        camera.wEye = vec3(0, 0, 4);
         camera.wLookat = vec3(0, 0, 0);
         camera.wVup = vec3(0, 1, 0);
 
         // Lights
         lights.resize(1);
-        lights[0].wLightPos = vec4(5, 7, 6, 0);    // ideal point -> directional light source
+        lights[0].wLightPos = vec4(0.09f, 0.07f, 0.06f, 0);    // ideal point -> directional light source
         lights[0].La = vec3(0.2f, 0.2f, 0.2f);
         lights[0].Le = vec3(3, 3, 3);
         
