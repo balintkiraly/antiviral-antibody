@@ -85,14 +85,28 @@ public:
     }
 };
 //---------------------------
-class StrippedTexture : public Texture {
+class VirusTexture : public Texture {
 //---------------------------
 public:
-    StrippedTexture(const int width = 0, const int height = 0) : Texture() {
+    VirusTexture(const int width = 0, const int height = 0) : Texture() {
         std::vector<vec4> image(width * height);
         const vec4 yellow(1, 1, 0, 1), darkRed(0.4f, 0, 0, 1);
         for (int x = 0; x < width; x++) for (int y = 0; y < height; y++) {
             image[y * width + x] = (x % 2) ? yellow : darkRed;
+        }
+        create(width, height, image, GL_NEAREST);
+    }
+};
+
+//---------------------------
+class VirusSpikeTexture : public Texture {
+//---------------------------
+public:
+    VirusSpikeTexture(const int width = 600, const int height = 600) : Texture() {
+        std::vector<vec4> image(width * height);
+        const vec4 blue(0, 0, 1, 1), darkRed(0.4f, 0, 0, 1);
+        for (int x = 0; x < width; x++) for (int y = 0; y < height; y++) {
+            image[y * width + x] = blue ;
         }
         create(width, height, image, GL_NEAREST);
     }
@@ -477,24 +491,20 @@ public:
     Tractricoid() { create(); }
 
     VertexData GenVertexData(float u, float v) {
-        v = v*M_PI*2;
-        u = u * 3;
         VertexData vd;
+        float height = 3;
         Clifford U(u * 2 * M_PI, 0), V(v * 2.0f, 1);
-        Clifford X = cosf(v) / coshf(u);
-        Clifford Y = sinf(v) / coshf(u);
-        Clifford Z = u - tanhf(u);
+        Clifford X = cosf(v * M_PI * 2) / coshf(u * height);
+        Clifford Y = sinf(v * M_PI * 2) / coshf(u * height);
+        Clifford Z = u * height - tanhf(u * height);
         vd.position = vec3(X.f, Y.f, Z.f);
 
-        vec3 drdU = vec3(X.d, Y.d, Z.d);
-
-        U.d = 0, V.d = 0;
-        X = cosf(v) / coshf(u);
-        Y = sinf(v) / coshf(u);
-        Z = u - tanhf(u);
-        vec3 drdV = vec3(X.d, Y.d, Z.d);
-
-        vd.normal = cross(drdU, drdV);
+        // http://trecs.se/pseudosphere.php (normal vector)
+        vd.normal = vec3(
+            (powf(sinhf(u), 2) - 1.0f ) * cos(v),
+            (powf(sinhf(u), 2) - 1.0f ) * sin(v),
+            -1.0f * sinhf(u) * tanhf(u)
+        );
         vd.texcoord = vec2(u, v);
         return vd;
     }
@@ -626,7 +636,6 @@ public:
         roomMaterial->ka = vec3(0.2f, 0.2f, 0.2f);
         roomMaterial->shininess = 30;
 
-
         Material * antibodyMaterial = new Material;
         antibodyMaterial->kd = vec3(0.8f, 0.6f, 0.4f);
         antibodyMaterial->ks = vec3(0.3f, 0.3f, 0.3f);
@@ -635,7 +644,8 @@ public:
 
         // Textures
         Texture * roomTexture = new RoomTexture();
-        Texture * strippedTexture = new StrippedTexture(30, 50);
+        Texture * virusTexture = new VirusTexture(30, 50);
+        Texture * virusSpikeTexture = new VirusSpikeTexture(30, 50);
         Texture * antibodyTexture = new AntibodyTexture();
 
         // Geometries
@@ -645,13 +655,13 @@ public:
         Geometry * antibody = new Antibody();
 
         // Create objects by setting up their vertex data on the GPU
-        Object * virusObject = new Object(phongShader, virusMaterial, strippedTexture, virus);
+        Object * virusObject = new Object(phongShader, virusMaterial, virusTexture, virus);
         virusObject->translation = vec3(0, 0, 0);
         virusObject->rotationAxis = vec3(0, 1, 1);
         virusObject->scale = vec3(1.0f, 1.0f, 1.0f);
         objects.push_back(virusObject);
 
-        Object * tractricoidObject = new Object(phongShader, virusMaterial, strippedTexture, tractricoid);
+        Object * tractricoidObject = new Object(phongShader, virusMaterial, virusSpikeTexture, tractricoid);
         tractricoidObject->translation = vec3(-2, -2, 1);
         tractricoidObject->rotationAxis = vec3(0, 1, 1);
         tractricoidObject->scale = vec3(0.5f, 0.5f, 0.5f);
