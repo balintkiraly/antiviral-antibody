@@ -641,6 +641,7 @@ public:
         // Geometries
         Geometry * room = new Room();
         Geometry * virus = new Virus();
+        Geometry * tractricoid = new Tractricoid();
         Geometry * antibody = new Antibody();
 
         // Create objects by setting up their vertex data on the GPU
@@ -649,6 +650,12 @@ public:
         virusObject->rotationAxis = vec3(0, 1, 1);
         virusObject->scale = vec3(1.0f, 1.0f, 1.0f);
         objects.push_back(virusObject);
+
+        Object * tractricoidObject = new Object(phongShader, virusMaterial, strippedTexture, tractricoid);
+        tractricoidObject->translation = vec3(-2, -2, 1);
+        tractricoidObject->rotationAxis = vec3(0, 1, 1);
+        tractricoidObject->scale = vec3(0.5f, 0.5f, 0.5f);
+        objects.push_back(tractricoidObject);
 
         Object * antibodyObject = new Object(phongShader, antibodyMaterial, antibodyTexture, antibody);
         antibodyObject->translation = vec3(1, 1, 1);
