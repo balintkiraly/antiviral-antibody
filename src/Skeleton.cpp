@@ -59,14 +59,27 @@ struct Light {
 };
 
 //---------------------------
-class CheckerBoardTexture : public Texture {
+class RoomTexture : public Texture {
 //---------------------------
 public:
-    CheckerBoardTexture(const int width = 0, const int height = 0) : Texture() {
+    RoomTexture(const int width = 600, const int height = 600) : Texture() {
         std::vector<vec4> image(width * height);
-        const vec4 yellow(1, 1, 0, 1), blue(0, 0, 1, 1);
+        const vec4 lightBlue(0.8f, 0.8f, 1, 1);
         for (int x = 0; x < width; x++) for (int y = 0; y < height; y++) {
-            image[y * width + x] = (x & 1) ^ (y & 1) ? yellow : blue;
+            image[y * width + x] = lightBlue;
+        }
+        create(width, height, image, GL_NEAREST);
+    }
+};
+//---------------------------
+class StrippedTexture : public Texture {
+//---------------------------
+public:
+    StrippedTexture(const int width = 0, const int height = 0) : Texture() {
+        std::vector<vec4> image(width * height);
+        const vec4 yellow(1, 1, 0, 1), darkRed(0.4f, 0, 0, 1);
+        for (int x = 0; x < width; x++) for (int y = 0; y < height; y++) {
+            image[y * width + x] = (x % 2) ? yellow : darkRed;
         }
         create(width, height, image, GL_NEAREST);
     }
@@ -367,6 +380,7 @@ public:
         glDeleteBuffers(1, &vbo);
         glDeleteVertexArrays(1, &vao);
     }
+    virtual float Animate(float tstart, float tend) { return 1.0f; }
 };
 
 //---------------------------
@@ -428,10 +442,10 @@ Clifford Exp(Clifford g) { return Clifford(expf(g.f), expf(g.f) * g.d); }
 Clifford Pow(Clifford g, float n) { return Clifford(powf(g.f, n), n * powf(g.f, n - 1) * g.d); }
 
 //---------------------------
-class Sphere : public ParamSurface {
+class Virus : public ParamSurface {
 //---------------------------
 public:
-    Sphere() { create(); }
+    Virus() { create(); }
 
     VertexData GenVertexData(float u, float v) {
         VertexData vd;
@@ -441,53 +455,24 @@ public:
         vd.texcoord = vec2(u, v);
         return vd;
     }
+    float Animate(float tstart, float tend) { return 0.8f * tend; }
 };
 
 //---------------------------
-class Torus : public ParamSurface {
+class Room : public ParamSurface {
 //---------------------------
-    const float R = 1, r = 0.5;
-
-    vec3 Point(float u, float v, float rr) {
-        float ur = u * 2.0f * (float)M_PI, vr = v * 2.0f * (float)M_PI;
-        float l = R + rr * cosf(ur);
-        return vec3(l * cosf(vr), l * sinf(vr), rr * sinf(ur));
-    }
 public:
-    Torus() { create(); }
+    Room() { create(); }
 
     VertexData GenVertexData(float u, float v) {
         VertexData vd;
-        vd.position = Point(u, v, r);
-        vd.normal = (vd.position - Point(u, v, 0)) * (1.0f / r);
+        vd.position = vd.normal = -1.0f * vec3(cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                                       sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                                       cosf(v * (float)M_PI));
         vd.texcoord = vec2(u, v);
         return vd;
     }
-    vec3 point(float u, float v) {
-        return Point(u, v, r);
-    }
-};
-
-//---------------------------
-class Mobius : public ParamSurface {
-//---------------------------
-    float R, w;
-public:
-    Mobius() { R = 1; w = 0.5; create(); }
-
-    VertexData GenVertexData(float u, float v) {
-        VertexData vd;
-        Clifford U(u * (float)M_PI, 1), V((v - 0.5f) * w, 0);
-        Clifford x = (Cos(U) * V + R) * Cos(U * 2);
-        Clifford y = (Cos(U) * V + R) * Sin(U * 2);
-        Clifford z = Sin(U) * V;
-        vd.position = vec3(x.f, y.f, z.f);
-        vec3 drdU(x.d, y.d, z.d);
-        vec3 drdV(cos(U.f)*cosf(2 * U.f), cosf(U.f)*sin(2 * U.f), sinf(U.f));
-        vd.normal = cross(drdU, drdV);
-        vd.texcoord = vec2(u, v);
-        return vd;
-    }
+    float Animate(float tstart, float tend) { return 1.0f; }
 };
 
 //---------------------------
@@ -552,7 +537,9 @@ public:
         geometry->Draw();
     }
 
-    virtual void Animate(float tstart, float tend) { rotationAngle = 0.8f * tend; }
+    virtual void Animate(float tstart, float tend) { 
+        rotationAngle = geometry->Animate(tstart, tend);
+    }
 };
 
 //---------------------------
@@ -565,79 +552,40 @@ public:
     void Build() {
         // Shaders
         Shader * phongShader = new PhongShader();
-        Shader * gouraudShader = new GouraudShader();
-        Shader * nprShader = new NPRShader();
 
         // Materials
-        Material * material0 = new Material;
-        material0->kd = vec3(0.6f, 0.4f, 0.2f);
-        material0->ks = vec3(4, 4, 4);
-        material0->ka = vec3(0.1f, 0.1f, 0.1f);
-        material0->shininess = 100;
+        Material * virusMaterial = new Material;
+        virusMaterial->kd = vec3(0.6f, 0.4f, 0.2f);
+        virusMaterial->ks = vec3(4, 4, 4);
+        virusMaterial->ka = vec3(0.1f, 0.1f, 0.1f);
+        virusMaterial->shininess = 100;
 
-        Material * material1 = new Material;
-        material1->kd = vec3(0.8f, 0.6f, 0.4f);
-        material1->ks = vec3(0.3f, 0.3f, 0.3f);
-        material1->ka = vec3(0.2f, 0.2f, 0.2f);
-        material1->shininess = 30;
+        Material * roomMaterial = new Material;
+        roomMaterial->kd = vec3(0.8f, 0.6f, 0.4f);
+        roomMaterial->ks = vec3(0.3f, 0.3f, 0.3f);
+        roomMaterial->ka = vec3(0.2f, 0.2f, 0.2f);
+        roomMaterial->shininess = 30;
 
         // Textures
-        Texture * texture4x8 = new CheckerBoardTexture(4, 8);
-        Texture * texture15x20 = new CheckerBoardTexture(15, 20);
+        Texture * roomTexture = new RoomTexture();
+        Texture * strippedTexture = new StrippedTexture(30, 50);
 
         // Geometries
-        Geometry * sphere = new Sphere();
-        Geometry * torus = new Torus();
-        Geometry * mobius = new Mobius();
+        Geometry * room = new Room();
+        Geometry * virus = new Virus();
 
         // Create objects by setting up their vertex data on the GPU
-        Object * sphereObject1 = new Object(phongShader, material0, texture15x20, sphere);
-        sphereObject1->translation = vec3(-3, 3, 0);
-        sphereObject1->rotationAxis = vec3(0, 1, 1);
-        sphereObject1->scale = vec3(0.5f, 1.2f, 0.5f);
-        objects.push_back(sphereObject1);
+        Object * virusObject = new Object(phongShader, virusMaterial, strippedTexture, virus);
+        virusObject->translation = vec3(0, 0, 0);
+        virusObject->rotationAxis = vec3(0, 1, 1);
+        virusObject->scale = vec3(1.0f, 1.0f, 1.0f);
+        objects.push_back(virusObject);
 
-        Object * torusObject1 = new Object(phongShader, material0, texture4x8, torus);
-        torusObject1->translation = vec3(0, 3, 0);
-        torusObject1->rotationAxis = vec3(1, 1, -1);
-        torusObject1->scale = vec3(0.7f, 0.7f, 0.7f);
-        objects.push_back(torusObject1);
-
-        Object * mobiusObject1 = new Object(phongShader, material0, texture4x8, mobius);
-        mobiusObject1->translation = vec3(3, 3, 0);
-        mobiusObject1->rotationAxis = vec3(1, 0, 0);
-        mobiusObject1->scale = vec3(0.7f, 0.7f, 0.7f);
-        objects.push_back(mobiusObject1);
-
-        Object * sphereObject2 = new Object(*sphereObject1);
-        sphereObject2->translation = vec3(-3, -3, 0);
-        sphereObject2->shader = nprShader;
-        objects.push_back(sphereObject2);
-
-        Object * torusObject2 = new Object(*torusObject1);
-        torusObject2->translation = vec3(0, -3, 0);
-        torusObject2->shader = nprShader;
-        objects.push_back(torusObject2);
-
-        Object * mobiusObject2 = new Object(*mobiusObject1);
-        mobiusObject2->translation = vec3(3, -3, 0);
-        mobiusObject2->shader = nprShader;
-        objects.push_back(mobiusObject2);
-
-        Object * sphereObject3 = new Object(*sphereObject1);
-        sphereObject3->translation = vec3(-3, 0, 0);
-        sphereObject3->shader = gouraudShader;
-        objects.push_back(sphereObject3);
-
-        Object * torusObject3 = new Object(*torusObject1);
-        torusObject3->translation = vec3(0, 0, 0);
-        torusObject3->shader = gouraudShader;
-        objects.push_back(torusObject3);
-
-        Object * mobiusObject3 = new Object(*mobiusObject1);
-        mobiusObject3->translation = vec3(3, 0, 0);
-        mobiusObject3->shader = gouraudShader;
-        objects.push_back(mobiusObject3);
+        Object * roomObject = new Object(phongShader, roomMaterial, roomTexture, room);
+        roomObject->translation = vec3(0, 0, 0);
+        roomObject->rotationAxis = vec3(0, 1, 1);
+        roomObject->scale = vec3(10.5f, 10.2f, 10.5f);
+        objects.push_back(roomObject);
 
         // Camera
         camera.wEye = vec3(0, 0, 6);
@@ -650,7 +598,7 @@ public:
         lights[0].La = vec3(0.1f, 0.1f, 1);
         lights[0].Le = vec3(3, 0, 0);
 
-        lights[1].wLightPos = vec4(5, 10, 20, 0);    // ideal point -> directional light source
+        lights[1].wLightPos = vec4(5, 7, 6, 0);    // ideal point -> directional light source
         lights[1].La = vec3(0.2f, 0.2f, 0.2f);
         lights[1].Le = vec3(0, 3, 0);
 
