@@ -546,34 +546,6 @@ public:
 };
 
 //---------------------------
-class Dini : public ParamSurface {
-//---------------------------
-    Clifford a = 1.0f, b = 0.15f;
-public:
-    Dini() { create(); }
-
-    VertexData GenVertexData(float u, float v) {
-        VertexData vd;
-        Clifford U(u * 4 * M_PI, 1), V(0.01f + (1 - 0.01f) * v, 0);
-        Clifford X = a * Cos(U) * Sin(V);
-        Clifford Y = a * Sin(U) * Sin(V);
-        Clifford Z = a * (Cos(V) + Log(Tan(V / 2))) + b * U + 3;
-        vd.position = vec3(X.f, Y.f, Z.f);
-        vec3 drdU = vec3(X.d, Y.d, Z.d);
-
-        U.d = 0, V.d = 1;
-        X = a * Cos(U) * Sin(V);
-        Y = a * Sin(U) * Sin(V);
-        Z = a * (Cos(V) + Log(Tan(V) / 2)) + b * U + 10;
-        vec3 drdV = vec3(X.d, Y.d, Z.d);
-
-        vd.normal = cross(drdU, drdV);
-        vd.texcoord = vec2(u, v);
-        return vd;
-    }
-};
-
-//---------------------------
 struct Object {
 //---------------------------
     Shader *   shader;
@@ -685,18 +657,11 @@ public:
         camera.wVup = vec3(0, 1, 0);
 
         // Lights
-        lights.resize(3);
-        lights[0].wLightPos = vec4(5, 5, 4, 0);    // ideal point -> directional light source
-        lights[0].La = vec3(0.1f, 0.1f, 1);
-        lights[0].Le = vec3(3, 0, 0);
-
-        lights[1].wLightPos = vec4(5, 7, 6, 0);    // ideal point -> directional light source
-        lights[1].La = vec3(0.2f, 0.2f, 0.2f);
-        lights[1].Le = vec3(0, 3, 0);
-
-        lights[2].wLightPos = vec4(-5, 5, 5, 0);    // ideal point -> directional light source
-        lights[2].La = vec3(0.1f, 0.1f, 0.1f);
-        lights[2].Le = vec3(0, 0, 3);
+        lights.resize(1);
+        lights[0].wLightPos = vec4(5, 7, 6, 0);    // ideal point -> directional light source
+        lights[0].La = vec3(0.2f, 0.2f, 0.2f);
+        lights[0].Le = vec3(3, 3, 3);
+        
     }
 
     void Render() {
