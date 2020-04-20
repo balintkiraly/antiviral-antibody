@@ -471,6 +471,35 @@ public:
     float Animate(float tstart, float tend) { return 1.8f * tend; }
 };
 
+class Tractricoid : public ParamSurface {
+//---------------------------
+public:
+    Tractricoid() { create(); }
+
+    VertexData GenVertexData(float u, float v) {
+        v = v*M_PI*2;
+        u = u * 3;
+        VertexData vd;
+        Clifford U(u * 2 * M_PI, 0), V(v * 2.0f, 1);
+        Clifford X = cosf(v) / coshf(u);
+        Clifford Y = sinf(v) / coshf(u);
+        Clifford Z = u - tanhf(u);
+        vd.position = vec3(X.f, Y.f, Z.f);
+
+        vec3 drdU = vec3(X.d, Y.d, Z.d);
+
+        U.d = 0, V.d = 0;
+        X = cosf(v) / coshf(u);
+        Y = sinf(v) / coshf(u);
+        Z = u - tanhf(u);
+        vec3 drdV = vec3(X.d, Y.d, Z.d);
+
+        vd.normal = cross(drdU, drdV);
+        vd.texcoord = vec2(u, v);
+        return vd;
+    }
+    float Animate(float tstart, float tend) { return 0.8f * tend; }
+};
 
 //---------------------------
 class Antibody : public ParamSurface {
