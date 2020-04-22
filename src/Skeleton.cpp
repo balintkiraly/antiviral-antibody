@@ -64,9 +64,9 @@ class RoomTexture : public Texture {
 public:
     RoomTexture(const int width = 600, const int height = 600) : Texture() {
         std::vector<vec4> image(width * height);
-        const vec4 lightBlue(0.8f, 0.8f, 1, 1);
+        const vec4 darkRed(1.0f, 0.3f, 0.3f, 1);
         for (int x = 0; x < width; x++) for (int y = 0; y < height; y++) {
-            image[y * width + x] = lightBlue;
+            image[y * width + x] = darkRed;
         }
         create(width, height, image, GL_NEAREST);
     }
@@ -441,6 +441,7 @@ public:
     }
 
     void Draw() {
+        create();
         glBindVertexArray(vao);
         for (unsigned int i = 0; i < nStrips; i++) glDrawArrays(GL_TRIANGLE_STRIP, i *  nVtxPerStrip, nVtxPerStrip);
     }
@@ -470,19 +471,27 @@ Clifford Pow(Clifford g, float n) { return Clifford(powf(g.f, n), n * powf(g.f, 
 
 //---------------------------
 class Virus : public ParamSurface {
+    float R;
 //---------------------------
 public:
-    Virus() { create(); }
+    Virus() { R=0.2f; create(); }
 
     VertexData GenVertexData(float u, float v) {
         VertexData vd;
-        vd.position = vd.normal = vec3(cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
-                                       sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
-                                       cosf(v * (float)M_PI));
+        float r = R * sinf(v*255.0f*M_PI) + 1.0f;
+        vd.position = vec3(r * cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                           r * sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                           r * cosf(v * (float)M_PI));
+        vd.normal = vec3(r * cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                         r * sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                         r * cosf(v * (float)M_PI));
         vd.texcoord = vec2(u, v);
         return vd;
     }
-    float Animate(float tstart, float tend) { return 1.8f * tend; }
+    float Animate(float tstart, float tend) { 
+        R = sinf(2.0f * M_PI * tend) * 0.1f;
+        return 1.0f * tend;
+    }
 };
 
 class Tractricoid : public ParamSurface {
