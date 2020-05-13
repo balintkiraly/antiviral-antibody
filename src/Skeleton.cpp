@@ -418,10 +418,12 @@ struct VertexData {
     vec2 texcoord;
 };
 
+struct Object;
 //---------------------------
 class Geometry {
 //---------------------------
 protected:
+    std::vector<Object *> children;
     unsigned int vao, vbo;        // vertex array object
 public:
     Geometry() {
@@ -435,8 +437,15 @@ public:
         glDeleteBuffers(1, &vbo);
         glDeleteVertexArrays(1, &vao);
     }
-    virtual float AnimateRotationAngle(float tstart, float tend) { return 1.62f; }
-    virtual vec3 AnimateTranslation(float tstart, float tend) { return vec3(1.0f, 1.0f, 1.0f); }
+    virtual float AnimateRotationAngle(float tstart, float tend, float currentAngle) { 
+        return currentAngle; 
+    }
+    virtual vec3 AnimateTranslation(float tstart, float tend, vec3 currentTranslation) {
+        return currentTranslation; 
+    }
+    std::vector<Object *> getChildren() {
+        return children;
+    }
 };
 
 //---------------------------
@@ -491,65 +500,6 @@ public:
         glBindVertexArray(vao);
         for (unsigned int i = 0; i < nStrips; i++) glDrawArrays(GL_TRIANGLE_STRIP, i *  nVtxPerStrip, nVtxPerStrip);
     }
-    
-    virtual float AnimateRotationAngle(float tstart, float tend) { return 1.62f; }
-    virtual vec3 AnimateTranslation(float tstart, float tend) { return vec3(1.0f, 1.0f, 1.0f); }
-    
-};
-
-//---------------------------
-class Virus : public ParamSurface {
-    float R;
-//---------------------------
-public:
-    Virus() { R=0.2f; create(); }
-
-    void eval(Dnum2& U, Dnum2& V, Dnum2& X, Dnum2& Y, Dnum2& Z) {
-        Dnum2 r = Sin(V * 255.0f * (float)M_PI) * R + 1.0f;
-        U =  U * 2.0f * (float)M_PI, V = V * (float)M_PI;
-        X = Cos(U) * Sin(V) * r; Y = Sin(U) * Sin(V) * r; Z = Cos(V) * r;
-
-    }
-
-    float AnimateRotationAngle(float tstart, float tend) { 
-        R = sinf(0.75f * M_PI * tend) * 0.05f;
-        return 1.0f * tend;
-    }
-    vec3 AnimateTranslation(float tstart, float tend) { 
-        return  normalize(vec3(cos(tend), sin(tend/2), sin(tend/3))); 
-    }
-};
-
-
-//---------------------------
-class Spike : public ParamSurface {
-//---------------------------
-public:
-    Spike() { create(); }
-
-    void eval(Dnum2& U, Dnum2& V, Dnum2& X, Dnum2& Y, Dnum2& Z) {
-        const float height = 3.0f;
-        U =  U * height, V = V * 2 * (float)M_PI;
-        X = Cos(V) / Cosh(U); Y = Sin(V) / Cosh(U); Z = U - Tanh(U);
-    }
-
-    float AnimateRotationAngle(float tstart, float tend) { 
-        return 1.0f * tend;
-    }
-};
-
-//---------------------------
-class Room : public ParamSurface {
-//---------------------------
-public:
-    Room() { create(); }
-
-    void eval(Dnum2& U, Dnum2& V, Dnum2& X, Dnum2& Y, Dnum2& Z) {
-        U =  U * 2.0F * (float)M_PI, V = V * 2 - 1.0f;
-        X = Cos(U); Y = Sin(U); Z = V;
-    }
-    virtual float AnimateRotationAngle(float tstart, float tend) { return 1.62f; }
-    vec3 AnimateTranslation(float tstart, float tend) { return vec3(0.0f, 0.0f, 0.0f); }
 };
 
 //---------------------------
@@ -561,13 +511,16 @@ struct Object {
     Geometry * geometry;
     vec3 scale, translation, rotationAxis;
     float rotationAngle;
+protected:
+    std::vector<Object *> children;
 public:
-    Object(Shader * _shader, Material * _material, Texture * _texture, Geometry * _geometry) :
+    Object(Shader * _shader, Material * _material, Texture * _texture, Geometry * _geometry, std::vector<Object *> _children = std::vector<Object *>()) :
         scale(vec3(1, 1, 1)), translation(vec3(0, 0, 0)), rotationAxis(0, 0, 1), rotationAngle(0) {
         shader = _shader;
         texture = _texture;
         material = _material;
         geometry = _geometry;
+        children = _children;
     }
     virtual void SetModelingTransform(mat4& M, mat4& Minv) {
         M = ScaleMatrix(scale) * RotationMatrix(rotationAngle, rotationAxis) * TranslateMatrix(translation);
@@ -584,12 +537,91 @@ public:
         state.texture = texture;
         shader->Bind(state);
         geometry->Draw();
+        for (Object * child : children) child->Draw(state);
     }
 
     virtual void Animate(float tstart, float tend) { 
-        rotationAngle = geometry->AnimateRotationAngle(tstart, tend);
-        translation = geometry->AnimateTranslation(tstart, tend);
+        rotationAngle = geometry->AnimateRotationAngle(tstart, tend, rotationAngle);
+        translation = geometry->AnimateTranslation(tstart, tend, translation);
+        
+        for (Object * child : children) {
+            child->Animate(tstart, tend);
+        }
         geometry->Draw();
+    }
+};
+
+
+//---------------------------
+class Spike : public ParamSurface {
+//---------------------------
+public:
+    Spike() { create(); }
+
+    void eval(Dnum2& U, Dnum2& V, Dnum2& X, Dnum2& Y, Dnum2& Z) {
+        const float height = 3.0f;
+        U =  U * height, V = V * 2 * (float)M_PI;
+        X = Cos(V) / Cosh(U); Y = Sin(V) / Cosh(U); Z = U - Tanh(U);
+    }
+};
+
+//---------------------------
+class Virus : public ParamSurface {
+    float R;
+//---------------------------
+public:
+    Virus() { R=0.2f; create();
+        generateSpikes(); }
+
+    void eval(Dnum2& U, Dnum2& V, Dnum2& X, Dnum2& Y, Dnum2& Z) {
+        Dnum2 r = Sin(V * 255.0f * (float)M_PI) * R + 1.0f;
+        U =  U * 2.0f * (float)M_PI, V = V * (float)M_PI;
+        X = Cos(U) * Sin(V) * r; Y = Sin(U) * Sin(V) * r; Z = Cos(V) * r;
+    }
+
+    float AnimateRotationAngle(float tstart, float tend, float currentAngle) { 
+        R = sinf(0.75f * M_PI * tend) * 0.05f;
+        return 1.0f * tend;
+    }
+    vec3 AnimateTranslation(float tstart, float tend, vec3 currentTranslation) { 
+        return normalize(vec3(cos(tend), sin(tend/2), sin(tend/3))); 
+    }
+    void generateSpikes() {
+        Shader * phongShader = new PhongShader();
+        Material * spikeMaterial = new Material;
+        spikeMaterial->kd = vec3(0.6f, 0.4f, 0.2f);
+        spikeMaterial->ks = vec3(4, 4, 4);
+        spikeMaterial->ka = vec3(0.1f, 0.1f, 0.1f);
+        spikeMaterial->shininess = 100;
+        Texture * spikeTexture = new VirusSpikeTexture(30, 50);
+        for(int i=0;i<5; i++)
+        {
+            Geometry * spike = new Spike();
+            Object * spikeObject = new Object(phongShader, spikeMaterial, spikeTexture, spike);
+            spikeObject->translation = vec3(0.5f*i, 0, 0);
+            spikeObject->rotationAxis = vec3(0, 1, 1);
+            spikeObject->scale = vec3(0.2f, 0.2f, 0.2f);
+            children.push_back(spikeObject);
+        }
+    }
+};
+
+
+//---------------------------
+class Room : public ParamSurface {
+//---------------------------
+public:
+    Room() { create(); }
+
+    void eval(Dnum2& U, Dnum2& V, Dnum2& X, Dnum2& Y, Dnum2& Z) {
+        U =  U * 2.0F * (float)M_PI, V = V * 2 - 1.0f;
+        X = Cos(U); Y = Sin(U); Z = V;
+    }
+    float AnimateRotationAngle(float tstart, float tend, float currentAngle) {
+        return 1.62f; 
+    }
+    vec3 AnimateTranslation(float tstart, float tend, vec3 currentTranslation) { 
+        return vec3(0.0f, 0.0f, 0.0f); 
     }
 };
 
@@ -631,11 +663,10 @@ public:
 
         // Geometries
         Geometry * virus = new Virus();
-        Geometry * spike = new Spike();
         Geometry * room = new Room();
 
         // Create objects by setting up their vertex data on the GPU
-        Object * virusObject = new Object(phongShader, virusMaterial, virusTexture, virus);
+        Object * virusObject = new Object(phongShader, virusMaterial, virusTexture, virus, virus->getChildren());
         virusObject->translation = vec3(0, 0, 0);
         virusObject->rotationAxis = vec3(0, 1, 1);
         virusObject->scale = vec3(1.0f, 1.0f, 1.0f);
@@ -646,12 +677,6 @@ public:
         roomObject->rotationAxis = vec3(0, 1.0f, 0);
         roomObject->scale = vec3(4.0f, 4.0f, 8.0f);
         objects.push_back(roomObject);
-  
-        Object * spikeObject = new Object(phongShader, virusMaterial, spikeTexture, spike);
-        spikeObject->translation = vec3(1, 1, 0);
-        spikeObject->rotationAxis = vec3(0, 1, 1);
-        spikeObject->scale = vec3(0.5f, 0.5f, 0.5f);
-        objects.push_back(spikeObject);
 
 
         // Camera
