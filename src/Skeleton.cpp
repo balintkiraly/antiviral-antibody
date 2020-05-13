@@ -37,6 +37,7 @@ template<class T> Dnum<T> Pow(Dnum<T> g, float n) {
 }
 
 typedef Dnum<vec2> Dnum2;
+
 //---------------------------
 struct Camera { // 3D camera
 //---------------------------
@@ -390,6 +391,7 @@ class NPRShader : public Shader {
 
         void main() {
            vec3 N = normalize(wNormal), V = normalize(wView), L = normalize(wLight);
+           if (dot(N, V) < 0) N = -N;
            float y = (dot(N, L) > 0.5) ? 1 : 0.5;
            if (abs(dot(N, V)) < 0.2) fragmentColor = vec4(0, 0, 0, 1);
            else                         fragmentColor = vec4(y * texture(diffuseTexture, texcoord).rgb, 1);
@@ -433,17 +435,34 @@ public:
         glDeleteBuffers(1, &vbo);
         glDeleteVertexArrays(1, &vao);
     }
-    virtual float Animate(float tstart, float tend) { return 1.0f; }
+    virtual float Animate(float tstart, float tend) { return 1.62f; }
 };
 
 //---------------------------
 class ParamSurface : public Geometry {
 //---------------------------
+    struct VertexData {
+        vec3 position, normal;
+        vec2 texcoord;
+    };
+
     unsigned int nVtxPerStrip, nStrips;
 public:
     ParamSurface() { nVtxPerStrip = nStrips = 0; }
 
-    virtual VertexData GenVertexData(float u, float v) = 0;
+    virtual void eval(Dnum2& U, Dnum2& V, Dnum2& X, Dnum2& Y, Dnum2& Z) = 0;
+    
+    VertexData GenVertexData(float u, float v) {
+        VertexData vtxData;
+        vtxData.texcoord = vec2(u, v);
+        Dnum2 X, Y, Z;
+        Dnum2 U(u, vec2(1, 0)), V(v, vec2(0, 1));
+        eval(U, V, X, Y, Z);
+        vtxData.position = vec3(X.f, Y.f, Z.f);
+        vec3 drdU(X.d.x, Y.d.x, Z.d.x), drdV(X.d.y, Y.d.y, Z.d.y);
+        vtxData.normal = cross(drdU, drdV);
+        return vtxData;
+    }
 
     void create(int N = tessellationLevel, int M = tessellationLevel) {
         nVtxPerStrip = (M + 1) * 2;
@@ -471,29 +490,9 @@ public:
         glBindVertexArray(vao);
         for (unsigned int i = 0; i < nStrips; i++) glDrawArrays(GL_TRIANGLE_STRIP, i *  nVtxPerStrip, nVtxPerStrip);
     }
+    
+    virtual float Animate(float tstart, float tend) { return 1.62f; }
 };
-
-//---------------------------
-struct Clifford {
-//---------------------------
-    float f, d;
-    Clifford(float f0 = 0, float d0 = 0) { f = f0, d = d0; }
-    Clifford operator+(Clifford r) { return Clifford(f + r.f, d + r.d); }
-    Clifford operator-(Clifford r) { return Clifford(f - r.f, d - r.d); }
-    Clifford operator*(Clifford r) { return Clifford(f * r.f, f * r.d + d * r.f); }
-    Clifford operator/(Clifford r) {
-        float l = r.f * r.f;
-        return (*this) * Clifford(r.f / l, -r.d / l);
-    }
-};
-
-Clifford T(float t) { return Clifford(t, 1); }
-Clifford Sin(Clifford g) { return Clifford(sin(g.f), cos(g.f) * g.d); }
-Clifford Cos(Clifford g) { return Clifford(cos(g.f), -sin(g.f) * g.d); }
-Clifford Tan(Clifford g) { return Sin(g)/Cos(g); }
-Clifford Log(Clifford g) { return Clifford(logf(g.f), 1 / g.f * g.d); }
-Clifford Exp(Clifford g) { return Clifford(expf(g.f), expf(g.f) * g.d); }
-Clifford Pow(Clifford g, float n) { return Clifford(powf(g.f, n), n * powf(g.f, n - 1) * g.d); }
 
 //---------------------------
 class Virus : public ParamSurface {
@@ -502,65 +501,35 @@ class Virus : public ParamSurface {
 public:
     Virus() { R=0.2f; create(); }
 
-    VertexData GenVertexData(float u, float v) {
-        VertexData vd;
-        float r = R * sinf(v*255.0f*M_PI) + 1.0f;
-        vd.position = vec3(r * cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
-                           r * sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
-                           r * cosf(v * (float)M_PI));
-        vd.normal = vec3(r * cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
-                         r * sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
-                         r * cosf(v * (float)M_PI));
-        vd.texcoord = vec2(u, v);
-        return vd;
+    void eval(Dnum2& U, Dnum2& V, Dnum2& X, Dnum2& Y, Dnum2& Z) {
+        Dnum2 r = Sin(V*255.0f*(float)M_PI) * R + 1.0f;
+        U =  U * 2.0f * (float)M_PI, V = V * (float)M_PI;
+        X = Cos(U) * Sin(V) * r; Y = Sin(U) * Sin(V) * r; Z = Cos(V) * r;
+
     }
+
     float Animate(float tstart, float tend) { 
-        R = sinf(2.0f * M_PI * tend) * 0.1f;
+        R = sinf(0.75f * M_PI * tend) * 0.05f;
         return 1.0f * tend;
     }
 };
 
-class Tractricoid : public ParamSurface {
+
+//---------------------------
+class Spike : public ParamSurface {
 //---------------------------
 public:
-    Tractricoid() { create(); }
+    Spike() { create(); }
 
-    VertexData GenVertexData(float u, float v) {
-        VertexData vd;
-        float height = 3;
-        Clifford U(u * 2 * M_PI, 0), V(v * 2.0f, 1);
-        Clifford X = cosf(v * M_PI * 2) / coshf(u * height);
-        Clifford Y = sinf(v * M_PI * 2) / coshf(u * height);
-        Clifford Z = u * height - tanhf(u * height);
-        vd.position = vec3(X.f, Y.f, Z.f);
-
-        // http://trecs.se/pseudosphere.php (normal vector)
-        vd.normal = vec3(
-            (powf(sinhf(u), 2) - 1.0f ) * cos(v),
-            (powf(sinhf(u), 2) - 1.0f ) * sin(v),
-            -1.0f * sinhf(u) * tanhf(u)
-        );
-        vd.texcoord = vec2(u, v);
-        return vd;
+    void eval(Dnum2& U, Dnum2& V, Dnum2& X, Dnum2& Y, Dnum2& Z) {
+        const float height = 3.0f;
+        U =  U * height, V = V * 2 * (float)M_PI;
+        X = Cos(V) / Cosh(U); Y = Sin(V) / Cosh(U); Z = U - Tanh(U);
     }
-    float Animate(float tstart, float tend) { return 0.8f * tend; }
-};
 
-//---------------------------
-class Antibody : public ParamSurface {
-//---------------------------
-public:
-    Antibody() { create(); }
-
-    VertexData GenVertexData(float u, float v) {
-        VertexData vd;
-        vd.position = vd.normal = vec3(cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
-                                       sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
-                                       cosf(v * (float)M_PI));
-        vd.texcoord = vec2(u, v);
-        return vd;
+    float Animate(float tstart, float tend) { 
+        return 1.0f * tend;
     }
-    float Animate(float tstart, float tend) { return 0.2f * tend; }
 };
 
 //---------------------------
@@ -569,16 +538,11 @@ class Room : public ParamSurface {
 public:
     Room() { create(); }
 
-    VertexData GenVertexData(float u, float v) {
-        VertexData vd;
-        vd.position = vec3(cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
-                            sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
-                            cosf(v * (float)M_PI));
-        vd.normal = vec3(0,0,0) - vd.position;
-        vd.texcoord = vec2(u, v);
-        return vd;
+    void eval(Dnum2& U, Dnum2& V, Dnum2& X, Dnum2& Y, Dnum2& Z) {
+        U =  U * 2.0F * (float)M_PI, V = V * 2 - 1.0f;
+        X = Cos(U); Y = Sin(U); Z = V;
     }
-    float Animate(float tstart, float tend) { return 1.0f; }
+    virtual float Animate(float tstart, float tend) { return 1.62f; }
 };
 
 //---------------------------
@@ -617,6 +581,7 @@ public:
 
     virtual void Animate(float tstart, float tend) { 
         rotationAngle = geometry->Animate(tstart, tend);
+        geometry->Draw();
     }
 };
 
@@ -653,39 +618,33 @@ public:
         // Textures
         Texture * roomTexture = new RoomTexture();
         Texture * virusTexture = new VirusTexture(30, 50);
-        Texture * virusSpikeTexture = new VirusSpikeTexture(30, 50);
+        Texture * spikeTexture = new VirusSpikeTexture(30, 50);
         Texture * antibodyTexture = new AntibodyTexture();
 
         // Geometries
-        Geometry * room = new Room();
         Geometry * virus = new Virus();
-        Geometry * tractricoid = new Tractricoid();
-        Geometry * antibody = new Antibody();
+        Geometry * spike = new Spike();
+        Geometry * room = new Room();
 
         // Create objects by setting up their vertex data on the GPU
         Object * virusObject = new Object(phongShader, virusMaterial, virusTexture, virus);
         virusObject->translation = vec3(0, 0, 0);
         virusObject->rotationAxis = vec3(0, 1, 1);
         virusObject->scale = vec3(1.0f, 1.0f, 1.0f);
-        objects.push_back(virusObject);
-
-        Object * tractricoidObject = new Object(phongShader, virusMaterial, virusSpikeTexture, tractricoid);
-        tractricoidObject->translation = vec3(-1, -1, 1);
-        tractricoidObject->rotationAxis = vec3(0, 1, 1);
-        tractricoidObject->scale = vec3(0.5f, 0.5f, 0.5f);
-        objects.push_back(tractricoidObject);
-
-        Object * antibodyObject = new Object(phongShader, antibodyMaterial, antibodyTexture, antibody);
-        antibodyObject->translation = vec3(1, 1, 1);
-        antibodyObject->rotationAxis = vec3(0, 1, 1);
-        antibodyObject->scale = vec3(0.5f, 0.2f, 0.5f);
-        objects.push_back(antibodyObject);
-
+        objects.push_back(virusObject);    
+        
         Object * roomObject = new Object(phongShader, roomMaterial, roomTexture, room);
         roomObject->translation = vec3(0, 0, 0);
-        roomObject->rotationAxis = vec3(0, 1, 1);
-        roomObject->scale = vec3(3.5f, 3.5f, 3.5f);
+        roomObject->rotationAxis = vec3(0, 1.0f, 0);
+        roomObject->scale = vec3(4.0f, 4.0f, 8.0f);
         objects.push_back(roomObject);
+  
+        Object * spikeObject = new Object(phongShader, virusMaterial, spikeTexture, spike);
+        spikeObject->translation = vec3(1, 1, 0);
+        spikeObject->rotationAxis = vec3(0, 1, 1);
+        spikeObject->scale = vec3(0.5f, 0.5f, 0.5f);
+        objects.push_back(spikeObject);
+
 
         // Camera
         camera.wEye = vec3(0, 0, 4);
