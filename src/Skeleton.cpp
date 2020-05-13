@@ -530,8 +530,13 @@ public:
     void Draw(RenderState state) {
         mat4 M, Minv;
         SetModelingTransform(M, Minv);
-        state.M = M;
-        state.Minv = Minv;
+        if(dot(vec4(1, 1, 1, 1), vec4(1,1,1,1) * state.M) == 0){
+            state.M = M;
+            state.Minv = Minv;
+        } else {
+            state.M = M * state.M;
+            state.Minv = Minv * state.Minv;
+        }
         state.MVP = state.M * state.V * state.P;
         state.material = material;
         state.texture = texture;
