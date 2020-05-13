@@ -435,7 +435,8 @@ public:
         glDeleteBuffers(1, &vbo);
         glDeleteVertexArrays(1, &vao);
     }
-    virtual float Animate(float tstart, float tend) { return 1.62f; }
+    virtual float AnimateRotationAngle(float tstart, float tend) { return 1.62f; }
+    virtual vec3 AnimateTranslation(float tstart, float tend) { return vec3(1.0f, 1.0f, 1.0f); }
 };
 
 //---------------------------
@@ -491,7 +492,9 @@ public:
         for (unsigned int i = 0; i < nStrips; i++) glDrawArrays(GL_TRIANGLE_STRIP, i *  nVtxPerStrip, nVtxPerStrip);
     }
     
-    virtual float Animate(float tstart, float tend) { return 1.62f; }
+    virtual float AnimateRotationAngle(float tstart, float tend) { return 1.62f; }
+    virtual vec3 AnimateTranslation(float tstart, float tend) { return vec3(1.0f, 1.0f, 1.0f); }
+    
 };
 
 //---------------------------
@@ -502,15 +505,18 @@ public:
     Virus() { R=0.2f; create(); }
 
     void eval(Dnum2& U, Dnum2& V, Dnum2& X, Dnum2& Y, Dnum2& Z) {
-        Dnum2 r = Sin(V*255.0f*(float)M_PI) * R + 1.0f;
+        Dnum2 r = Sin(V * 255.0f * (float)M_PI) * R + 1.0f;
         U =  U * 2.0f * (float)M_PI, V = V * (float)M_PI;
         X = Cos(U) * Sin(V) * r; Y = Sin(U) * Sin(V) * r; Z = Cos(V) * r;
 
     }
 
-    float Animate(float tstart, float tend) { 
+    float AnimateRotationAngle(float tstart, float tend) { 
         R = sinf(0.75f * M_PI * tend) * 0.05f;
         return 1.0f * tend;
+    }
+    vec3 AnimateTranslation(float tstart, float tend) { 
+        return  normalize(vec3(cos(tend), sin(tend/2), sin(tend/3))); 
     }
 };
 
@@ -527,7 +533,7 @@ public:
         X = Cos(V) / Cosh(U); Y = Sin(V) / Cosh(U); Z = U - Tanh(U);
     }
 
-    float Animate(float tstart, float tend) { 
+    float AnimateRotationAngle(float tstart, float tend) { 
         return 1.0f * tend;
     }
 };
@@ -542,7 +548,8 @@ public:
         U =  U * 2.0F * (float)M_PI, V = V * 2 - 1.0f;
         X = Cos(U); Y = Sin(U); Z = V;
     }
-    virtual float Animate(float tstart, float tend) { return 1.62f; }
+    virtual float AnimateRotationAngle(float tstart, float tend) { return 1.62f; }
+    vec3 AnimateTranslation(float tstart, float tend) { return vec3(0.0f, 0.0f, 0.0f); }
 };
 
 //---------------------------
@@ -580,7 +587,8 @@ public:
     }
 
     virtual void Animate(float tstart, float tend) { 
-        rotationAngle = geometry->Animate(tstart, tend);
+        rotationAngle = geometry->AnimateRotationAngle(tstart, tend);
+        translation = geometry->AnimateTranslation(tstart, tend);
         geometry->Draw();
     }
 };
