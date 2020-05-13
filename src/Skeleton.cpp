@@ -11,6 +11,32 @@
 
 const int tessellationLevel = 20;
 
+
+//---------------------------
+template<class T> struct Dnum {
+//---------------------------
+    float f;
+    T d;
+    Dnum(float f0 = 0, T d0 = T(0)) { f = f0, d = d0; }
+    Dnum operator+(Dnum r) { return Dnum(f + r.f, d + r.d); }
+    Dnum operator-(Dnum r) { return Dnum(f - r.f, d - r.d); }
+    Dnum operator*(Dnum r) { return Dnum(f * r.f, f * r.d + d * r.f); }
+    Dnum operator/(Dnum r) { return Dnum(f / r.f, (r.f * d - r.d * f) / r.f / r.f); }
+};
+
+template<class T> Dnum<T> Exp(Dnum<T> g) { return Dnum<T>(expf(g.f), expf(g.f)*g.d); }
+template<class T> Dnum<T> Sin(Dnum<T> g) { return Dnum<T>(sinf(g.f), cosf(g.f)*g.d); }
+template<class T> Dnum<T> Cos(Dnum<T> g) { return Dnum<T>(cosf(g.f), -sinf(g.f)*g.d); }
+template<class T> Dnum<T> Tan(Dnum<T> g) { return Sin(g) / Cos(g); }
+template<class T> Dnum<T> Sinh(Dnum<T> g) { return Dnum<T>(sinh(g.f), cosh(g.f)*g.d); }
+template<class T> Dnum<T> Cosh(Dnum<T> g) { return Dnum<T>(cosh(g.f), sinh(g.f)*g.d); }
+template<class T> Dnum<T> Tanh(Dnum<T> g) { return Sinh(g) / Cosh(g); }
+template<class T> Dnum<T> Log(Dnum<T> g) { return Dnum<T>(logf(g.f), g.d / g.f); }
+template<class T> Dnum<T> Pow(Dnum<T> g, float n) { 
+    return Dnum<T>(powf(g.f, n), powf(g.f, n - 1) * g.d);
+}
+
+typedef Dnum<vec2> Dnum2;
 //---------------------------
 struct Camera { // 3D camera
 //---------------------------
