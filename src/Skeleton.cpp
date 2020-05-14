@@ -575,8 +575,8 @@ class Virus : public ParamSurface {
     float R;
 //---------------------------
 public:
-    Virus() { R=0.2f; create();
-        generateSpikes(); }
+    Virus() { R=0.2f; create(); 
+        generateSpikes();}
 
     void eval(Dnum2& U, Dnum2& V, Dnum2& X, Dnum2& Y, Dnum2& Z) {
         Dnum2 r = Sin(V * 255.0f * (float)M_PI) * R + 1.0f;
@@ -584,7 +584,7 @@ public:
         X = Cos(U) * Sin(V) * r; Y = Sin(U) * Sin(V) * r; Z = Cos(V) * r;
     }
 
-    float AnimateRotationAngle(float tstart, float tend, float currentAngle) { 
+    float AnimateRotationAngle(float tstart, float tend, float currentAngle) {
         R = sinf(0.75f * M_PI * tend) * 0.05f;
         return 1.0f * tend;
     }
@@ -592,6 +592,7 @@ public:
         return normalize(vec3(cos(tend), sin(tend/2), sin(tend/3))); 
     }
     void generateSpikes() {
+        children = std::vector<Object *>();
         Shader * phongShader = new PhongShader();
         Material * spikeMaterial = new Material;
         spikeMaterial->kd = vec3(0.6f, 0.4f, 0.2f);
@@ -599,15 +600,48 @@ public:
         spikeMaterial->ka = vec3(0.1f, 0.1f, 0.1f);
         spikeMaterial->shininess = 100;
         Texture * spikeTexture = new VirusSpikeTexture(30, 50);
-        for(int i=0;i<5; i++)
-        {
-            Geometry * spike = new Spike();
-            Object * spikeObject = new Object(phongShader, spikeMaterial, spikeTexture, spike);
-            spikeObject->translation = vec3(0.5f*i, 0, 0);
-            spikeObject->rotationAxis = vec3(0, 1, 1);
-            spikeObject->scale = vec3(0.2f, 0.2f, 0.2f);
-            children.push_back(spikeObject);
-        }
+
+        Geometry * spike1 = new Spike();
+        Geometry * spike2 = new Spike();
+        Geometry * spike3 = new Spike();
+        Geometry * spike4 = new Spike();
+        Geometry * spike5 = new Spike();
+        Geometry * spike6 = new Spike();
+        Object * spikeObject1 = new Object(phongShader, spikeMaterial, spikeTexture, spike1);
+        Object * spikeObject2 = new Object(phongShader, spikeMaterial, spikeTexture, spike2);
+        Object * spikeObject3 = new Object(phongShader, spikeMaterial, spikeTexture, spike3);
+        Object * spikeObject4 = new Object(phongShader, spikeMaterial, spikeTexture, spike4);
+        Object * spikeObject5 = new Object(phongShader, spikeMaterial, spikeTexture, spike5);
+        Object * spikeObject6 = new Object(phongShader, spikeMaterial, spikeTexture, spike6);
+        spikeObject1->translation = vec3(1.35f, 0, 0);
+        spikeObject1->rotationAxis = vec3(0, 1, 0);
+        spikeObject1->rotationAngle = -1.0f * M_PI/2.0f;
+        spikeObject1->scale = vec3(0.2f, 0.2f, 0.2f);
+        children.push_back(spikeObject1);
+        spikeObject2->translation = vec3(0, 0, 1.35f);
+        spikeObject2->rotationAxis = vec3(1, 0, 0);
+        spikeObject2->rotationAngle =  M_PI;
+        spikeObject2->scale = vec3(0.2f, 0.2f, 0.2f);
+        children.push_back(spikeObject2);
+        spikeObject3->translation = vec3(0, 1.35f, 0);
+        spikeObject3->rotationAxis = vec3(1, 0, 0);
+        spikeObject3->rotationAngle = M_PI/2.0f;
+        spikeObject3->scale = vec3(0.2f, 0.2f, 0.2f);
+        children.push_back(spikeObject3);
+        spikeObject4->translation = vec3(0, -1.35f, 0);
+        spikeObject4->rotationAxis = vec3(1, 0, 0);
+        spikeObject4->rotationAngle = -1.0f * M_PI/2.0f;
+        spikeObject4->scale = vec3(0.2f, 0.2f, 0.2f);
+        children.push_back(spikeObject4);
+        spikeObject5->translation = vec3(0, 0, -1.35f);
+        spikeObject5->rotationAxis = vec3(1, 0, 0);
+        spikeObject5->scale = vec3(0.2f, 0.2f, 0.2f);
+        children.push_back(spikeObject5);
+        spikeObject6->translation = vec3(-1.35f, 0, 0);
+        spikeObject6->rotationAxis = vec3(0, 1, 0);
+        spikeObject6->rotationAngle = 1.0f * M_PI/2.0f;
+        spikeObject6->scale = vec3(0.2f, 0.2f, 0.2f);
+        children.push_back(spikeObject6);
     }
 };
 
