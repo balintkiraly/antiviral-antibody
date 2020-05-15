@@ -511,18 +511,16 @@ class Triangle : public Geometry {
         vec2 texcoord;
     };
     vec3 a, b, c;
-    unsigned int nVtxPerStrip, nStrips;
+    unsigned int  nStrips;
 public:
     Triangle(vec3 _a, vec3 _b, vec3 _c) { 
-        nVtxPerStrip = nStrips = 3; 
+        nStrips = 3; 
         a = _a;
         b = _b;
         c = _c;
     }
 
     void create(int N = tessellationLevel, int M = tessellationLevel) {
-        nVtxPerStrip = 3;
-        nStrips = 3;
         std::vector<VertexData> vtxData;
         vec3 normalVector = normalize(cross(a - b, b - c));
 
@@ -543,7 +541,7 @@ public:
         vtxData.push_back(vtxDataB);
         vtxData.push_back(vtxDataC);
         
-        glBufferData(GL_ARRAY_BUFFER, nVtxPerStrip * nStrips * sizeof(VertexData), &vtxData[0], GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, nStrips * sizeof(VertexData), &vtxData[0], GL_STATIC_DRAW);
         // Enable the vertex attribute arrays
         glEnableVertexAttribArray(0);  // attribute array 0 = POSITION
         glEnableVertexAttribArray(1);  // attribute array 1 = NORMAL
@@ -558,7 +556,7 @@ public:
         create();
         glBindVertexArray(vao);
         for (unsigned int i = 0; i < nStrips; i++) 
-            glDrawArrays(GL_TRIANGLES, i *  nVtxPerStrip, nVtxPerStrip);
+            glDrawArrays(GL_TRIANGLES, i *  nStrips, nStrips);
     }
     
     virtual float AnimateRotationAngle(float tstart, float tend, float currentAngle) { 
@@ -732,7 +730,7 @@ public:
         printf("genTriangles deep %d", deep);
         Shader * phongShader = new PhongShader();
         Material * antibodyMaterial = new Material;
-        antibodyMaterial->kd = vec3(0.6f, 0.4f, 0.2f);
+        antibodyMaterial->kd = vec3(0.0f, 0.2f+(0.2f*deep), 0.2f);
         antibodyMaterial->ks = vec3(4, 4, 4);
         antibodyMaterial->ka = vec3(0.1f, 0.1f, 0.1f);
         antibodyMaterial->shininess = 100;
@@ -755,10 +753,10 @@ public:
         printf("c %f", length(A-C));
         printf("d %f\n\n", length(D-C));
 
-        vec3 aa=((A-B)/2.0) + B;
+        vec3 ac=((A-B)/2.0) + B;
         vec3 ab=((C-B)/2.0) + B;
-        vec3 ac=((A-C)/2.0) + C;
-        vec3 ad=((aa+ab+ac)/3.0f) + (normalize(cross(ab - ac, aa - ab))*length(aa-ab));
+        vec3 aa=((A-C)/2.0) + C;
+        vec3 ad=((aa+ab+ac)/3.0f) + (normalize(cross(aa - ab, ac - aa)) * length(aa-ab));
         generateTriangles(aa, ab, ac, ad, deep+1);
         
         vec3 ba=((A-B)/2.0) + B;
@@ -766,7 +764,6 @@ public:
         vec3 bc=((A-D)/2.0) + D;
         vec3 bd=((ba+bb+bc)/3.0f) + (normalize(cross(ba - bb, bc - ba))*length(ba-bb));
         generateTriangles(ba, bb, bc, bd, deep+1);
-        
         
         vec3 ca=((B-C)/2.0) + C;
         vec3 cb=((D-C)/2.0) + C;
@@ -777,7 +774,7 @@ public:
         vec3 da=((A-C)/2.0) + C;
         vec3 db=((D-C)/2.0) + C;
         vec3 dc=((A-D)/2.0) + D;
-        vec3 dd=((da+db+dc)/3.0f) + (normalize(cross(da - dc, db - da))*length(da-db));
+        vec3 dd=((da+db+dc)/3.0f) + (normalize(cross(dc - db, da - db))*length(da-db));
         generateTriangles(da, db, dc, dd, deep+1);
         
         deep++;
