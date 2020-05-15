@@ -560,7 +560,7 @@ public:
     }
     
     virtual float AnimateRotationAngle(float tstart, float tend, float currentAngle) { 
-        return 0.8f * tend; 
+        return currentAngle;
     }
 };
 //---------------------------
@@ -603,6 +603,7 @@ public:
         state.texture = texture;
         shader->Bind(state);
         geometry->Draw();
+        children = geometry->getChildren();
         for (Object * child : children) child->Draw(state);
     }
 
@@ -710,14 +711,17 @@ public:
 //---------------------------
 class Antibody : public ParamSurface {
     vec3 a, b, c, d;
+    float tetraederLenght;
 //---------------------------
 public:
     Antibody(vec3 _a, vec3 _b, vec3 _c, vec3 _d) {
+        tetraederLenght = 1.0f;
         a = _a;
         b = _b;
         c = _c;
         d = _d;
-        create(); generateTriangles(a, b, c, d);
+        create();
+        generateTriangles(a, b, c, d);
     }
     void eval(Dnum2& U, Dnum2& V, Dnum2& X, Dnum2& Y, Dnum2& Z){
 
@@ -727,7 +731,6 @@ public:
             children = std::vector<Object *>();
         }
         if (deep > 2) return;
-        printf("genTriangles deep %d", deep);
         Shader * phongShader = new PhongShader();
         Material * antibodyMaterial = new Material;
         antibodyMaterial->kd = vec3(0.0f, 0.2f+(0.2f*deep), 0.2f);
@@ -748,36 +751,41 @@ public:
         children.push_back(triangleObject2);
         children.push_back(triangleObject3);
         children.push_back(triangleObject4);
-        printf("\na %f", length(A-B));
-        printf("b %f", length(C-B));
-        printf("c %f", length(A-C));
-        printf("d %f\n\n", length(D-C));
 
         vec3 ac=((A-B)/2.0) + B;
         vec3 ab=((C-B)/2.0) + B;
         vec3 aa=((A-C)/2.0) + C;
-        vec3 ad=((aa+ab+ac)/3.0f) + (normalize(cross(aa - ab, ac - aa)) * length(aa-ab));
+        vec3 ad=((aa+ab+ac)/3.0f) + (normalize(cross(aa - ab, ac - aa)) * length(aa-ab)*tetraederLenght);
         generateTriangles(aa, ab, ac, ad, deep+1);
         
         vec3 ba=((A-B)/2.0) + B;
         vec3 bb=((D-B)/2.0) + B;
         vec3 bc=((A-D)/2.0) + D;
-        vec3 bd=((ba+bb+bc)/3.0f) + (normalize(cross(ba - bb, bc - ba))*length(ba-bb));
+        vec3 bd=((ba+bb+bc)/3.0f) + (normalize(cross(ba - bb, bc - ba))*length(ba-bb))*tetraederLenght;
         generateTriangles(ba, bb, bc, bd, deep+1);
         
         vec3 ca=((B-C)/2.0) + C;
         vec3 cb=((D-C)/2.0) + C;
         vec3 cc=((B-D)/2.0) + D;
-        vec3 cd=((ca+cb+cc)/3.0f) + (normalize(cross(cb - ca, cb - cc))*length(ca-cb));
+        vec3 cd=((ca+cb+cc)/3.0f) + (normalize(cross(cb - ca, cb - cc))*length(ca-cb))*tetraederLenght;
         generateTriangles(ca, cb, cc, cd, deep+1);
 
         vec3 da=((A-C)/2.0) + C;
         vec3 db=((D-C)/2.0) + C;
         vec3 dc=((A-D)/2.0) + D;
-        vec3 dd=((da+db+dc)/3.0f) + (normalize(cross(dc - db, da - db))*length(da-db));
-        generateTriangles(da, db, dc, dd, deep+1);
+        vec3 dd=((da+db+dc)/3.0f) + (normalize(cross(dc - db, da - db))*length(da-db))*tetraederLenght;
+        generateTriangles(db, da, dc, dd, deep+1);
         
         deep++;
+    }
+
+    float AnimateRotationAngle(float tstart, float tend, float currentAngle) { 
+        tetraederLenght = sinf(tend * 0.5f)+1.0f; 
+        //generateTriangles(a, b, c, d);
+        return tend*0.8f;
+    }
+    vec3 AnimateTranslation(float tstart, float tend, float currentTranslation) { 
+        return vec3(tend,tend,tend);
     }
 };
 
