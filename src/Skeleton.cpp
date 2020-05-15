@@ -502,6 +502,69 @@ public:
     }
 };
 
+
+//---------------------------
+class Triangle : public Geometry {
+//---------------------------
+    struct VertexData {
+        vec3 position, normal;
+        vec2 texcoord;
+    };
+    vec3 a, b, c;
+    unsigned int nVtxPerStrip, nStrips;
+public:
+    Triangle(vec3 _a, vec3 _b, vec3 _c) { 
+        nVtxPerStrip = nStrips = 3; 
+        a = _a;
+        b = _b;
+        c = _c;
+    }
+
+    void create(int N = tessellationLevel, int M = tessellationLevel) {
+        nVtxPerStrip = 3;
+        nStrips = 3;
+        std::vector<VertexData> vtxData;
+        vec3 normalVector = normalize(cross(a - b, b - c));
+
+        VertexData vtxDataA;
+        VertexData vtxDataB;
+        VertexData vtxDataC;
+        vtxDataA.texcoord = vec2(0, 0);
+        vtxDataA.position = a;
+        vtxDataA.normal = normalVector;
+        vtxDataB.texcoord = vec2(0, 1);
+        vtxDataB.position = b;
+        vtxDataB.normal = normalVector;
+        vtxDataC.texcoord = vec2(1, 0);
+        vtxDataC.position = c;
+        vtxDataC.normal = normalVector;
+    
+        vtxData.push_back(vtxDataA);
+        vtxData.push_back(vtxDataB);
+        vtxData.push_back(vtxDataC);
+        
+        glBufferData(GL_ARRAY_BUFFER, nVtxPerStrip * nStrips * sizeof(VertexData), &vtxData[0], GL_STATIC_DRAW);
+        // Enable the vertex attribute arrays
+        glEnableVertexAttribArray(0);  // attribute array 0 = POSITION
+        glEnableVertexAttribArray(1);  // attribute array 1 = NORMAL
+        glEnableVertexAttribArray(2);  // attribute array 2 = TEXCOORD0
+        // attribute array, components/attribute, component type, normalize?, stride, offset
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, position));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, normal));
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, texcoord));
+    }
+
+    void Draw() {
+        create();
+        glBindVertexArray(vao);
+        for (unsigned int i = 0; i < nStrips; i++) 
+            glDrawArrays(GL_TRIANGLES, i *  nVtxPerStrip, nVtxPerStrip);
+    }
+    
+    virtual float AnimateRotationAngle(float tstart, float tend, float currentAngle) { 
+        return 0.8f * tend; 
+    }
+};
 //---------------------------
 struct Object {
 //---------------------------
@@ -647,6 +710,82 @@ public:
 
 
 //---------------------------
+class Antibody : public ParamSurface {
+    vec3 a, b, c, d;
+//---------------------------
+public:
+    Antibody(vec3 _a, vec3 _b, vec3 _c, vec3 _d) {
+        a = _a;
+        b = _b;
+        c = _c;
+        d = _d;
+        create(); generateTriangles(a, b, c, d);
+    }
+    void eval(Dnum2& U, Dnum2& V, Dnum2& X, Dnum2& Y, Dnum2& Z){
+
+    }
+    void generateTriangles(vec3 A, vec3 B, vec3 C, vec3 D, int deep = 0) {
+        if(deep == 0) {
+            children = std::vector<Object *>();
+        }
+        if (deep > 2) return;
+        printf("genTriangles deep %d", deep);
+        Shader * phongShader = new PhongShader();
+        Material * antibodyMaterial = new Material;
+        antibodyMaterial->kd = vec3(0.6f, 0.4f, 0.2f);
+        antibodyMaterial->ks = vec3(4, 4, 4);
+        antibodyMaterial->ka = vec3(0.1f, 0.1f, 0.1f);
+        antibodyMaterial->shininess = 100;
+        Texture * antibodyTexture = new AntibodyTexture(30, 50);
+
+        Geometry * triangle1 = new Triangle(A, B, C);
+        Geometry * triangle2 = new Triangle(A, B, D);
+        Geometry * triangle3 = new Triangle(B, C, D);
+        Geometry * triangle4 = new Triangle(A, C, D);
+        Object * triangleObject1 = new Object(phongShader, antibodyMaterial, antibodyTexture, triangle1);
+        Object * triangleObject2 = new Object(phongShader, antibodyMaterial, antibodyTexture, triangle2);
+        Object * triangleObject3 = new Object(phongShader, antibodyMaterial, antibodyTexture, triangle3);
+        Object * triangleObject4 = new Object(phongShader, antibodyMaterial, antibodyTexture, triangle4);
+        children.push_back(triangleObject1);
+        children.push_back(triangleObject2);
+        children.push_back(triangleObject3);
+        children.push_back(triangleObject4);
+        printf("\na %f", length(A-B));
+        printf("b %f", length(C-B));
+        printf("c %f", length(A-C));
+        printf("d %f\n\n", length(D-C));
+
+        vec3 aa=((A-B)/2.0) + B;
+        vec3 ab=((C-B)/2.0) + B;
+        vec3 ac=((A-C)/2.0) + C;
+        vec3 ad=((aa+ab+ac)/3.0f) + (normalize(cross(ab - ac, aa - ab))*length(aa-ab));
+        generateTriangles(aa, ab, ac, ad, deep+1);
+        
+        vec3 ba=((A-B)/2.0) + B;
+        vec3 bb=((D-B)/2.0) + B;
+        vec3 bc=((A-D)/2.0) + D;
+        vec3 bd=((ba+bb+bc)/3.0f) + (normalize(cross(ba - bb, bc - ba))*length(ba-bb));
+        generateTriangles(ba, bb, bc, bd, deep+1);
+        
+        
+        vec3 ca=((B-C)/2.0) + C;
+        vec3 cb=((D-C)/2.0) + C;
+        vec3 cc=((B-D)/2.0) + D;
+        vec3 cd=((ca+cb+cc)/3.0f) + (normalize(cross(cb - ca, cb - cc))*length(ca-cb));
+        generateTriangles(ca, cb, cc, cd, deep+1);
+
+        vec3 da=((A-C)/2.0) + C;
+        vec3 db=((D-C)/2.0) + C;
+        vec3 dc=((A-D)/2.0) + D;
+        vec3 dd=((da+db+dc)/3.0f) + (normalize(cross(da - dc, db - da))*length(da-db));
+        generateTriangles(da, db, dc, dd, deep+1);
+        
+        deep++;
+    }
+};
+
+
+//---------------------------
 class Room : public ParamSurface {
 //---------------------------
 public:
@@ -703,13 +842,19 @@ public:
         // Geometries
         Geometry * virus = new Virus();
         Geometry * room = new Room();
-
+        Geometry * antibody = new Antibody(vec3(0.5f,0.5f,0.5f), vec3(0.5f,-0.5f,-0.5f), vec3(-0.5f, 0.5f, -0.5f), vec3(-0.5f, -0.5f, 0.5f));
         // Create objects by setting up their vertex data on the GPU
         Object * virusObject = new Object(phongShader, virusMaterial, virusTexture, virus, virus->getChildren());
         virusObject->translation = vec3(0, 0, 0);
         virusObject->rotationAxis = vec3(0, 1, 1);
         virusObject->scale = vec3(1.0f, 1.0f, 1.0f);
         objects.push_back(virusObject);    
+                
+        Object * antibodyObject = new Object(phongShader, antibodyMaterial, antibodyTexture, antibody, antibody->getChildren());
+        antibodyObject->translation = vec3(0, 1, 2);
+        antibodyObject->rotationAxis = vec3(0, 1, 1);
+        antibodyObject->scale = vec3(0.5f, 0.5f, 0.5f);
+        objects.push_back(antibodyObject);    
         
         Object * roomObject = new Object(phongShader, roomMaterial, roomTexture, room);
         roomObject->translation = vec3(0, 0, 0);
