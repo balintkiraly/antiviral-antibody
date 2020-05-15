@@ -714,8 +714,9 @@ class Antibody : public ParamSurface {
     float tetraederLenght;
 //---------------------------
 public:
-    Antibody(vec3 _a, vec3 _b, vec3 _c, vec3 _d) {
-        tetraederLenght = 1.0f;
+    Antibody(vec3 _a, vec3 _b, vec3 _c, vec3 _d, float tend) {
+        
+        tetraederLenght = (sinf(tend * 0.5f)+1.5f) * 0.5f;
         a = _a;
         b = _b;
         c = _c;
@@ -727,9 +728,6 @@ public:
 
     }
     void generateTriangles(vec3 A, vec3 B, vec3 C, vec3 D, int deep = 0) {
-        if(deep == 0) {
-            children = std::vector<Object *>();
-        }
         if (deep > 2) return;
         Shader * phongShader = new PhongShader();
         Material * antibodyMaterial = new Material;
@@ -780,9 +778,7 @@ public:
     }
 
     float AnimateRotationAngle(float tstart, float tend, float currentAngle) { 
-        tetraederLenght = sinf(tend * 0.5f)+1.0f; 
-        //generateTriangles(a, b, c, d);
-        return tend*0.8f;
+        return tend * 0.8f;
     }
     vec3 AnimateTranslation(float tstart, float tend, float currentTranslation) { 
         return vec3(tend,tend,tend);
@@ -832,34 +828,22 @@ public:
         roomMaterial->ka = vec3(0.2f, 0.2f, 0.2f);
         roomMaterial->shininess = 30;
 
-        Material * antibodyMaterial = new Material;
-        antibodyMaterial->kd = vec3(0.8f, 0.6f, 0.4f);
-        antibodyMaterial->ks = vec3(0.3f, 0.3f, 0.3f);
-        antibodyMaterial->ka = vec3(0.2f, 0.2f, 0.2f);
-        antibodyMaterial->shininess = 30;
-
         // Textures
         Texture * roomTexture = new RoomTexture();
         Texture * virusTexture = new VirusTexture(30, 50);
         Texture * spikeTexture = new VirusSpikeTexture(30, 50);
-        Texture * antibodyTexture = new AntibodyTexture();
 
         // Geometries
         Geometry * virus = new Virus();
         Geometry * room = new Room();
-        Geometry * antibody = new Antibody(vec3(0.5f,0.5f,0.5f), vec3(0.5f,-0.5f,-0.5f), vec3(-0.5f, 0.5f, -0.5f), vec3(-0.5f, -0.5f, 0.5f));
+
         // Create objects by setting up their vertex data on the GPU
-        Object * virusObject = new Object(phongShader, virusMaterial, virusTexture, virus, virus->getChildren());
+        Object * virusObject = new Object(phongShader, virusMaterial, virusTexture, virus);
         virusObject->translation = vec3(0, 0, 0);
         virusObject->rotationAxis = vec3(0, 1, 1);
         virusObject->scale = vec3(1.0f, 1.0f, 1.0f);
         objects.push_back(virusObject);    
-                
-        Object * antibodyObject = new Object(phongShader, antibodyMaterial, antibodyTexture, antibody, antibody->getChildren());
-        antibodyObject->translation = vec3(0, 1, 2);
-        antibodyObject->rotationAxis = vec3(0, 1, 1);
-        antibodyObject->scale = vec3(0.5f, 0.5f, 0.5f);
-        objects.push_back(antibodyObject);    
+                 
         
         Object * roomObject = new Object(phongShader, roomMaterial, roomTexture, room);
         roomObject->translation = vec3(0, 0, 0);
@@ -867,6 +851,18 @@ public:
         roomObject->scale = vec3(4.0f, 4.0f, 8.0f);
         objects.push_back(roomObject);
 
+       Geometry * antibody = new Antibody(vec3(0.5f,0.5f,0.5f), vec3(0.5f,-0.5f,-0.5f), vec3(-0.5f, 0.5f, -0.5f), vec3(-0.5f, -0.5f, 0.5f), 1.0f);
+        Material * antibodyMaterial = new Material;
+        antibodyMaterial->kd = vec3(0.8f, 0.6f, 0.4f);
+        antibodyMaterial->ks = vec3(0.3f, 0.3f, 0.3f);
+        antibodyMaterial->ka = vec3(0.2f, 0.2f, 0.2f);
+        antibodyMaterial->shininess = 30;
+        Texture * antibodyTexture = new AntibodyTexture();
+        Object * antibodyObject = new Object(phongShader, antibodyMaterial, antibodyTexture, antibody);
+        antibodyObject->translation = vec3(0, 1, 2);
+        antibodyObject->rotationAxis = vec3(0, 1, 1);
+        antibodyObject->scale = vec3(0.5f, 0.5f, 0.5f);
+        objects.push_back(antibodyObject);
 
         // Camera
         camera.wEye = vec3(0, 0, 4);
@@ -900,6 +896,24 @@ public:
 
     void Animate(float tstart, float tend) {
         camera.Animate(tend);
+        float e=0.03;
+        if(fmod(tend, 0.1f) >= 0.0f - e && fmod(tend, 0.1f) <= 0.0f + e ) {
+            printf("asd %f\n", tend);
+            Shader * shader = new PhongShader();
+            Geometry * antibody = new Antibody(vec3(0.5f,0.5f,0.5f), vec3(0.5f,-0.5f,-0.5f), vec3(-0.5f, 0.5f, -0.5f), vec3(-0.5f, -0.5f, 0.5f), tend);
+            Material * antibodyMaterial = new Material;
+            antibodyMaterial->kd = vec3(0.8f, 0.6f, 0.4f);
+            antibodyMaterial->ks = vec3(0.3f, 0.3f, 0.3f);
+            antibodyMaterial->ka = vec3(0.2f, 0.2f, 0.2f);
+            antibodyMaterial->shininess = 30;
+            Texture * antibodyTexture = new AntibodyTexture();
+            Object * antibodyObject = new Object(shader, antibodyMaterial, antibodyTexture, antibody);
+            antibodyObject->translation = vec3(0, 1, 2);
+            antibodyObject->rotationAxis = vec3(0, 1, 1);
+            antibodyObject->scale = vec3(0.5f, 0.5f, 0.5f);
+            objects.pop_back();
+            objects.push_back(antibodyObject);
+        }
         for (unsigned int i = 0; i < lights.size(); i++) { lights[i].Animate(tend); }
         for (Object * obj : objects) obj->Animate(tstart, tend);
     }
