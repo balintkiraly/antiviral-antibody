@@ -715,18 +715,16 @@ class Antibody : public ParamSurface {
 //---------------------------
 public:
     Antibody(vec3 _a, vec3 _b, vec3 _c, vec3 _d, float tend) {
-        
         tetraederLenght = (sinf(tend * 0.5f)+1.5f) * 0.5f;
         a = _a;
         b = _b;
         c = _c;
         d = _d;
-        create();
         generateTriangles(a, b, c, d);
+        create();
     }
-    void eval(Dnum2& U, Dnum2& V, Dnum2& X, Dnum2& Y, Dnum2& Z){
+    void eval(Dnum2& U, Dnum2& V, Dnum2& X, Dnum2& Y, Dnum2& Z){}
 
-    }
     void generateTriangles(vec3 A, vec3 B, vec3 C, vec3 D, int deep = 0) {
         if (deep > 2) return;
         Shader * phongShader = new PhongShader();
@@ -871,15 +869,15 @@ public:
 
         // Lights
         lights.resize(3);
-        lights[0].wLightPos = vec4(5, 5, 4, 0);    // ideal point -> directional light source
+        lights[0].wLightPos = vec4(5, 5, 4, 3);    // ideal point -> directional light source
         lights[0].La = vec3(0.1f, 0.1f, 1);
         lights[0].Le = vec3(3, 0, 0);
 
-        lights[1].wLightPos = vec4(5, 10, 20, 0);    // ideal point -> directional light source
+        lights[1].wLightPos = vec4(5, 10, 20, 3);    // ideal point -> directional light source
         lights[1].La = vec3(0.2f, 0.2f, 0.2f);
         lights[1].Le = vec3(0, 3, 0);
 
-        lights[2].wLightPos = vec4(-5, 5, 5, 0);    // ideal point -> directional light source
+        lights[2].wLightPos = vec4(-5, 5, 5, 3);    // ideal point -> directional light source
         lights[2].La = vec3(0.1f, 0.1f, 0.1f);
         lights[2].Le = vec3(0, 0, 3);
         
@@ -896,11 +894,10 @@ public:
 
     void Animate(float tstart, float tend) {
         camera.Animate(tend);
-        float e=0.03;
+        float e=0.02;
         if(fmod(tend, 0.1f) >= 0.0f - e && fmod(tend, 0.1f) <= 0.0f + e ) {
-            printf("asd %f\n", tend);
             Shader * shader = new PhongShader();
-            Geometry * antibody = new Antibody(vec3(0.5f,0.5f,0.5f), vec3(0.5f,-0.5f,-0.5f), vec3(-0.5f, 0.5f, -0.5f), vec3(-0.5f, -0.5f, 0.5f), tend);
+            Geometry * antibody = new Antibody(vec3(0.125f,0.125f,0.125f), vec3(0.125f,-0.125f,-0.125f), vec3(-0.125f, 0.125f, -0.125f), vec3(-0.125f, -0.125f, 0.125f), tend);
             Material * antibodyMaterial = new Material;
             antibodyMaterial->kd = vec3(0.8f, 0.6f, 0.4f);
             antibodyMaterial->ks = vec3(0.3f, 0.3f, 0.3f);
@@ -910,7 +907,6 @@ public:
             Object * antibodyObject = new Object(shader, antibodyMaterial, antibodyTexture, antibody);
             antibodyObject->translation = vec3(0, 1, 2);
             antibodyObject->rotationAxis = vec3(0, 1, 1);
-            antibodyObject->scale = vec3(0.5f, 0.5f, 0.5f);
             objects.pop_back();
             objects.push_back(antibodyObject);
         }
